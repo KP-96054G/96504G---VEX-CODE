@@ -1,5 +1,8 @@
 Documentation:
-
+CONTENTS:
+Autons- line 7
+Motors- line 29
+Pnumatics- line 49
 
 AUTONS:
 
@@ -23,7 +26,32 @@ Inside of {}, we put the arugments for that line of code. The main Arugements we
 Ex: to allow the intake to spin while the robot moves write: chassis.moveToPoint(7, 10, 1500, {.forwards = true, .maxSpeed = 70}, true);
 To stop the intake, you would have to set the last True command to false.
 
-MOTOR MOVEMENT-
+MOTOR MOVEMENT & BRAKING-
+For controlling motors/motor groups, we use:
+motor.move(float voltage);
+In this case, motor would be replaced by the object you are trying to use.
+
+Int voltage controls the voltage/speed of the movement of the motor. The absolute value of voltage detirmines how fast the motor will move, and whether voltage is +/- controls in what direction it will move.
+A the maximum voltage is 127, and the Minimum is -127. To make the motor stop, use motor.break(); or motor.move(0);
+
+To controll how long a motor will move, either add a delay after the move() command followed by motor.move(0); or put it inside a standard for loop with i deing the delay, and motor.move(voltage) and delay(1) being inside the for loop. Outside the loop, put motor.move(0);
+
+For motor braking, we use:
+motor.setBrakeMode(E_MOTOR_BRAKE_MODE);
+the 'mode' in E_MOTOR_BRAKE_MODE would be replaced by the brake mode- coast, brake, or hold.
+Brake keeps the motor in the same rotational state as when it stopped moving.
+Hold with hold the motor where it stopped, and will move it back if not moved by the code.
+Coast is the standard brake mode and does nothing.
+
+For example, to set the arm braking to hold, we write: Arm.set_brake_mode(E_MOTOR_BRAKE_HOLD);
+We can also use motor.brake(), mentioned above, to brake the motor after a movement.
+
+PNUMATICS-
+For controlling Pnumatics, we use:
+name.set_value(bool val || int val);
+In this case, name would be replaced the the name of the pnumatic object you are reffering to. 
+
+Inside the (), we can either put a boolean, or an int equal to 1 or 0; 1 or a boolean set to true extends the pnumatics, and 0 or a boolean set to false retracts it.
 
 
 
