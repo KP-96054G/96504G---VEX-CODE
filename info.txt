@@ -1,11 +1,29 @@
-READ ME:
+Documentation:
 
 
+AUTONS:
 
-The main code for our Team can be found within the SRC Folder. The active code can be found in Main.cpp, and the scrapped code can be found in comments.cpp. The Project.pros file contains the name, port, and logo for our project. The static folder contains downloaded paths from path.jerry.io, which were download but not used for this project. In the include foler, prexisting header files api.h and main.h can be found. Selection.h was a head file for Selection.cpp, which was a scrapped auton selector. The rest of the files are unimportant.
+CHASSIS MOVEMENT-
+For Moving and Turing the robot, we use:
+CHASSIS.moveToPoint(float x, float y, int timeout, {Arguments}); for movement
+and CHASSIS.turnToHeading(float theta, int timeout, {Arguements}); for turning
 
-A full explanation of main.cpp can be found by running Read.java or reading "info.txt".
+Float X and Float Y are the positions the robot is moving to on the cordinate plane.
+For example, if the robot was at point (90, -10) and I wanted to move it +10 in the x direction and -5 in the y, I would set X to 100 and y to -15. 
 
+Float Theta is the angle the heading is being set to by the Command.
+For example, if the robot was facing backwards, its heading would be 180, and to turn it +40 degrees I would set theta to 220.
+
+Int timeout is the maximum amount of time a command is allotted. The normal timeout is around 1500, but if you wanted a command to run shorter/longer, you modify the timeout.
+
+Inside of {}, we put the arugments for that line of code. The main Arugements we use are:
+.maxSpeed- Which specifies the maximum speed the chassis should move, usually set to 70.
+.fowards- Which specifies if the robot is moving fowards of backwards to a point (If we dont want to change heading while moving backwards) can be true or false.
+& async- Goes outside the {} and does not require a "." command like the others. Async determines if other motor/movement processes can happen at the same time. 
+Ex: to allow the intake to spin while the robot moves write: chassis.moveToPoint(7, 10, 1500, {.forwards = true, .maxSpeed = 70}, true);
+To stop the intake, you would have to set the last True command to false.
+
+MOTOR MOVEMENT-
 
 
 
