@@ -1,84 +1,49 @@
+
+
 #include "main.h"
 #include "lemlib/api.hpp" // IWYU pragma: keep
 #include "lemlib/asset.hpp"
 #include "lemlib/chassis/chassis.hpp"
 #include "lemlib/chassis/trackingWheel.hpp"
 #include "lemlib/timer.hpp"
-#include "liblvgl/core/lv_obj.h"
-#include "liblvgl/extra/widgets/tileview/lv_tileview.h"
-#include "liblvgl/llemu.h"
-#include "liblvgl/llemu.hpp"
-#include "liblvgl/widgets/lv_canvas.h"
 #include "pros/abstract_motor.hpp"
 #include "pros/adi.h"
 #include "pros/adi.hpp"
-#include "pros/colors.h"
-#include "pros/colors.hpp"
-#include "pros/imu.hpp"
-#include "pros/llemu.hpp"
 #include "pros/misc.h"
 #include "pros/misc.hpp"
 #include "pros/motor_group.hpp"
 #include "pros/motors.h"
 #include "pros/motors.hpp"
-//#include "okapi/api.hpp"
 #include "pros/rotation.hpp"
 #include "pros/rtos.h"
 #include "pros/rtos.hpp"
 #include <chrono>
-#include <cstddef>
 #include <ctime>
 #include <thread>
 #include <cmath>
-#include "selection.h"
 
 using namespace pros;
-using namespace lcd;
-using namespace pros::lcd;
-using namespace lemlib;
-using namespace c;
-using namespace competition;
-using namespace pros::competition;
-using namespace screen;
-using namespace pros::screen;
-//using namespace std;
+
 
 pros::Controller controller(pros::E_CONTROLLER_MASTER);
 
-pros::Imu motion(21);
+
+pros::Motor Arm(20);
 pros::Rotation rotationSensor(8);
 
 pros::adi::DigitalOut clamp('H', false);
-pros::adi::DigitalOut doink('F', false);
+pros::adi::DigitalOut doink('A', false);
 
-pros::Motor Arm(20);
 pros::MotorGroup intake ({10, 9}, pros::MotorGearset::blue);
-pros::MotorGroup DL({13, -5, -17}, pros::MotorGearset::blue); 
-pros::MotorGroup DR({-12, 6, 18}, pros::MotorGearset::blue);
-pros::MotorGroup Drive({-12, 6, 18, 13, -5, -17}, pros::MotorGearset::blue);
-Motor one(13);
-Motor two(-5);
-Motor three(-17);
-Motor four(-12);
-Motor five(6);
-Motor sixe(18);
+
+pros::MotorGroup DL({-13, -5, 17}, pros::MotorGearset::blue); 
+pros::MotorGroup DR({12, 6, -18}, pros::MotorGearset::blue);
+
+pros::Imu imu(4);
 
 bool clampOut = false;
-bool doinkOut = false;
 int runAuton = 0;
-bool contBuzz = false;
-int rum = 0;
-int rb1 = 0;
-int rb2 = 0;
-int rb3 = 0;
-int value = -3;
-int currState = 0;
-bool earase = false;
-bool oner = false;
-bool twor = false;
-const int numStates = 3;
-int states[numStates] = {0, 400, 1000};
- int target = 0;
+
 // const int numStates = 3;
 // //make sure these are in centidegrees (1 degree = 100 centidegrees)
 // int states[numStates] = {0, 300, 2000};
@@ -100,6 +65,9 @@ int states[numStates] = {0, 400, 1000};
 //     double velocity = kp * error;
 //     Arm.move(-velocity);
 // }
+
+
+
 // drivetrain settings
 lemlib::Drivetrain drivetrain(&DL, // left motor group
                               &DR, // right motor group
@@ -137,28 +105,22 @@ lemlib::OdomSensors sensors(nullptr, // vertical tracking wheel
                             nullptr, // vertical tracking wheel 2, set to nullptr as we don't have a second one
                             nullptr, // horizontal tracking wheel
                             nullptr, // horizontal tracking wheel 2, set to nullptr as we don't have a second one
-                            &motion // inertial sensor
+                            &imu // inertial sensor
 );
 // create the chassis
 lemlib::Chassis chassis(drivetrain, // drivetrain settings
                         lateral_controller, // lateral PID settings
                         angular_controller,
-                        sensors // angular PID settings
+						sensors // angular PID settings
                         
 );
 
-  
-
-
-
-float convert(float o, float t, float th){
-    o = o + t + th;
-    return o/3;
-}
-  
-
-
-void nextState() { 
+int currState = 0;
+const int numStates = 3;
+int states[numStates] = {0, 400, 1000};
+ int target = 0;
+  void nextState() 
+  { 
     currState += 1;
     if (currState == 2)
      currState += 1; // Skip the 1200-degree state
@@ -167,152 +129,63 @@ void nextState() {
          target = states [currState];
          
          }
-}
-void liftControl() { 
+         }
+          void liftControl()
+          { 
             double kp = .4;
-             double error = target - rotationSensor.get_angle();
+             double error = target - Arm.get_position();
               double velocity = kp * error;
             //    Arm.move(velocity);
-}
-
-void runBuzz(){
-            while(true){
-                if(!pros::competition::is_connected()){
-                if(contBuzz){
-                    controller.rumble("._.");
-                    
-                }
-            }
-        }
-}
-
-void changePixel() {
-    pros::screen_touch_status_s_t status = pros::screen::touch_status();
-    //pros::screen::draw_pixel(status.x, status.y);
-    if(status.y < 120){
-        controller.print(0,0, "RIGHT");
-        controller.rumble("...");
-        value = 1;
-        rb1 = 1;
-    }
-    if(status.y >= 120){
-        controller.print(0,0, "LEFT");
-        controller.rumble("___");
-        value = 2;
-        rb1 = 1;
-    }
-    
- }
+          }
 
 // initialize function. Runs on program startup
 void initialize() {
-
-    chassis.calibrate(); // calibrate sensors
-    rotationSensor.reset_position();
-    rotationSensor.reset();
-    //rotationSensor.set_data_rate(15);
-    motion.reset();
-    motion.tare_rotation();
-    motion.tare_heading();
-    int c = 0;
-    //runBuzz();
-    controller.rumble("______.");
+    chassis.calibrate();
+    pros::lcd::initialize(); // initialize brain screen
+     // calibrate sensors
+    controller.rumble("....");
     
-
-
+    //print position to brain screen
     pros::Task liftControlTask([]{
         while (true) {
             liftControl();
             pros::delay(10);
         }
     });
-
-
     pros::Task screen_task([&]() {
-        while(true){
-            
-            // if(c == 0){
-            //     float d = convert(one.get_temperature(), two.get_temperature(), three.get_temperature());
-            //     controller.print(0, 0, "DR: %f", d);
-            //     c++;
-            // }
-            // else if(c == 1){
-            //     float d = convert(four.get_temperature(), five.get_temperature(), sixe.get_temperature());
-            //     controller.print(0, 0, "DL: %f", d);
-            //     c = 0;
-            // }
-            // else{
-            //     controller.print(0, 0, "ERROR");
-            // }
-            //delay(3000);
-            if(rb1 == 0){
-                set_pen(COLOR_ORANGE_RED);
-                pros::screen::draw_rect(1,1,479,119);
-                set_pen(COLOR_ORANGE_RED);
-                pros::screen::fill_rect(1,1,479,119);
-                set_pen(COLOR_BLUE_VIOLET);
-                pros::screen::draw_rect(1,201,479,239);
-                set_pen(COLOR_BLUE_VIOLET);
-                pros::screen::fill_rect(1,201,479,239);
-                set_pen(COLOR_GOLD);
-                pros::screen::print(pros::E_TEXT_LARGE,100, 50, "RIGHT");
-                pros::screen::print(pros::E_TEXT_LARGE,100, 170, "LEFT");
-                pros::screen::touch_callback(changePixel, TOUCH_PRESSED);
-            
-            }
-            else if(rb1 == 1 && earase == false){
-                pros::screen::set_eraser(COLOR_ALICE_BLUE);
-                pros::screen::erase();
-                earase = true;
-            }
-            else{
-                set_pen(COLOR_BLACK);
-                pros::screen::print(pros::E_TEXT_MEDIUM, 2, "Arm Angle: %f", rotationSensor.get_angle(), ", Arm Rotation: %f", rotationSensor.get_position(), ",Arm Velo: %f", rotationSensor.get_velocity());
-                imu_accel_s_t accel2 = motion.get_accel();
-                pros::screen::print(E_TEXT_MEDIUM, 3, "Imu Rotation:  %f", motion.get_rotation(), ", Imu Heading: %f", motion.get_heading(), ", Imu accel: {x: %f, y: %f, z: %f}\n", accel2.x, accel2.y, accel2.z);
-                pros::screen::print(pros::E_TEXT_SMALL, 4, "Arm Temp: %f, Intake Temp: %f, L1: %f, L2: %f, L3: %f, R1: %f, R2: %f, R3: %f", Arm.get_temperature(), intake.get_temperature(), one.get_temperature(), two.get_temperature(), three.get_temperature(), four.get_temperature(), five.get_temperature(), sixe.get_temperature());
-            }
-            if (pros::competition::is_connected()) {
-                if(oner == false){
-                    controller.rumble(". .");
-                    oner = true;
-                }
-            }
-                        
-            if(pros::competition::is_autonomous())    {
-                if(twor == false){
-                    controller.rumble("_ _");
-                    twor = true;
-            }
+        while (true) {
+            // print robot location to the brain screen
+            pros::lcd::print(0, "X: %f", (chassis.getPose().x)-48); // x
+            pros::lcd::print(1, "Y: %f", (chassis.getPose().y)-24); // y
+            pros::lcd::print(2, "Theta: %f", (chassis.getPose().theta)+270); // heading
+            // delay to save resources
+            pros::delay(20);
             
         }
-            delay(500);
-            if(rb1 == 1 && earase){
-                pros::screen::erase();
-            }    
-        }
-            
-            
-
-       
     });
 }
 
+
 //pros::Controller controller(pros::E_CONTROLLER_MASTER);
+
+
+
+
+
+
 /**
  * Runs initialization code. This occurs as soon as the program is started.
  *
  * All other competition modes are blocked by initialize; it is recommended
  * to keep execution time for this mode under a few seconds.
  */
+
 /**
  * Runs while the robot is in the disabled state of Field Management System or
  * the VEX Competition Switch, following either autonomous or opcontrol. When
  * the robot is enabled, this task will exit.
  */
-void disabled() {
-    
-}
+void disabled() {}
 
 /**
  * Runs after initialize(), and before autonomous when connected to the Field
@@ -324,40 +197,24 @@ void disabled() {
  * starts.
  */
 void competition_initialize() {
-    // if(rb1 == 0){
-    //     if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
-    //         on_center_button();
-            
-            
-    //     }
-    //     else if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
-    //         on_mid_button();
-            
-    //     }
-    //     else{
-    //         pros::lcd::print(9, "Currently set to skills");
-    //         controller.print(0,1, "Auton set to skills press <- or -> to change");
-    //     }
-    // }
+
+   
 }
+
+void runIntake(){
+     for(int i = 0; i < 660; i++){
+                intake.move_velocity(1000);
+                intake.move(127);
+                pros::delay(1);
+
+            }
+}
+
 
 void d(int k){
     delay(k);
 }
 
-
-void reverseAuton(int k){
-    for(int i = 0; i < k; i++){
-        delay(1);
-    }
-    intake.move(0);
-    for(int i = 0; i < 100; i++){
-        intake.move(-127);
-    }
-} 
-
-
-//PROG SKILLS
 void progSkills() {
     clamp.set_value(1);
     chassis.setPose(-62, 0, 90);
@@ -408,7 +265,16 @@ void progSkills() {
     chassis.turnToHeading(180, 500);
     chassis.moveToPoint(63,57, 3500, {.forwards = false, .maxSpeed = 90}, false);
     chassis.turnToHeading(0, 500);
-    chassis.moveToPoint(63,-57, 3500, {.forwards = false, .maxSpeed = 90}, false);
+    chassis.moveToPoint(41,-22, 3500, {.forwards = true, .maxSpeed = 90}, false);
+    chassis.moveToPoint(46, 0, 1500, {.forwards = false, .maxSpeed = 70}, false);
+    clamp.set_value(0);
+    delay(500);
+    intake.move(127);
+    chassis.moveToPoint(17, -58, 3000, {.forwards = true, .maxSpeed = 70}, true);
+    chassis.moveToPoint(59, -65, 1500, {.forwards = false, .maxSpeed = 70}, false);
+    
+
+
 }
 
 void ourRight() {
@@ -450,27 +316,29 @@ void ourleft() {
 
 }
 
+void test(){
+    chassis.setPose(-62, 0, 90);
+
+    chassis.moveToPoint(0, 34, 1500);
+}
 
 void autonomous() {
 
-    if(value== -3){
-        progSkills();
-    }
-    else if(value == 1){
-        ourRight();
-    }
-    else if(value == 2){
-        ourleft();
-    }
-    else{
-        progSkills();
-    }
+    //ourleft();
+    //ourRight();
+    //progSkills();
+    test();
 }
+
+
+
+
 /**
  * Runs the operator control code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
  * the Field Management System or the VEX Competition Switch in the operator
- * control mode
+ * control mode.
+ *
  * If no competition control is connected, this function will run immediately
  * following initialize().
  *
@@ -478,18 +346,11 @@ void autonomous() {
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
-
-
 void opcontrol() {
     // controller
     // loop to continuously update motors
     Arm.set_brake_mode(E_MOTOR_BRAKE_HOLD);
 
-    //!Arm.move_velocity(0);
-    // bool t = true;
-    // bool e = true;
-    // bool r = true;
-    // int c = 0;
 
     while (true) {
 
@@ -513,23 +374,7 @@ void opcontrol() {
             
         // }
 
-        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
-            if(rb1 == 0){
-                controller.print(0,0, "RIGHT");
-                controller.rumble("...");
-                value = 1;
-                rb1 = 1;
-            }
-        }
-
-        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
-            if(rb1 == 0){
-                controller.print(0,0, "LEFT");
-                controller.rumble("___");
-                value = 2;
-                rb1 = 1;
-            }
-        }
+        
 
         if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
             Arm.move(127);
@@ -564,6 +409,7 @@ void opcontrol() {
 
         if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) && runAuton == 0){
             runAuton++;
+			//rb1 = 1;
             autonomous();
         }
 
